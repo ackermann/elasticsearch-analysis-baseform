@@ -1,4 +1,7 @@
 package org.xbib.elasticsearch.index.analysis;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
@@ -8,7 +11,6 @@ import org.apache.lucene.util.Version;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
 import org.elasticsearch.common.inject.Injector;
 import org.elasticsearch.common.inject.ModulesBuilder;
-import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.settings.SettingsModule;
 import org.elasticsearch.env.Environment;
@@ -19,7 +21,6 @@ import org.elasticsearch.index.analysis.AnalysisModule;
 import org.elasticsearch.index.analysis.AnalysisService;
 import org.elasticsearch.index.analysis.TokenFilterFactory;
 import org.elasticsearch.index.settings.IndexSettingsModule;
-import org.elasticsearch.indices.analysis.IndicesAnalysisModule;
 import org.elasticsearch.indices.analysis.IndicesAnalysisService;
 import org.junit.Assert;
 import org.junit.Test;
@@ -62,7 +63,8 @@ public class BaseformTokenFilterTests extends Assert {
             "kosten"
         };
 
-        Tokenizer tokenizer = new StandardTokenizer(Version.LATEST, new StringReader(source));
+        Tokenizer tokenizer = new StandardTokenizer();
+        tokenizer.setReader(new StringReader(source));
         assertSimpleTSOutput(tokenFilter.create(tokenizer), expected);
 
     }
@@ -89,7 +91,8 @@ public class BaseformTokenFilterTests extends Assert {
                 "transportieren"
         };
 
-        Tokenizer tokenizer = new StandardTokenizer(Version.LATEST, new StringReader(source));
+        Tokenizer tokenizer = new StandardTokenizer();
+        tokenizer.setReader(new StringReader(source));
         assertSimpleTSOutput(tokenFilter.create(tokenizer), expected);
     }
 
@@ -111,18 +114,23 @@ public class BaseformTokenFilterTests extends Assert {
                 "gemacht",
                 "machen"
         };
-        Tokenizer tokenizer = new StandardTokenizer(Version.LATEST, new StringReader(source));
+        Tokenizer tokenizer = new StandardTokenizer();
+        tokenizer.setReader(new StringReader(source));
+
         assertSimpleTSOutput(tokenFilter.create(tokenizer), expected);
     }
 
     private AnalysisService createAnalysisService() {
-        Settings settings = ImmutableSettings.settingsBuilder()
-                .put(IndexMetaData.SETTING_VERSION_CREATED, org.elasticsearch.Version.CURRENT)
-                .build();
+        Settings settings =
+                Settings.settingsBuilder()
+                    .put("path.home", (new File("").getAbsolutePath()))
+                    .put(IndexMetaData.SETTING_VERSION_CREATED, org.elasticsearch.Version.CURRENT)
+                    .build();
+
         Index index = new Index("test");
         Injector parentInjector = new ModulesBuilder().add(new SettingsModule(settings),
-                new EnvironmentModule(new Environment(settings)),
-                new IndicesAnalysisModule())
+                new EnvironmentModule(new Environment(settings))
+                )
                 .createInjector();
         AnalysisModule analysisModule = new AnalysisModule(settings, parentInjector.getInstance(IndicesAnalysisService.class));
         new AnalysisBaseformPlugin(settings).onModule(analysisModule);

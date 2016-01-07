@@ -1,5 +1,8 @@
 package org.xbib.elasticsearch.index.analysis;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.io.IOException;
 
 import org.apache.lucene.analysis.TokenStream;
@@ -9,7 +12,6 @@ import org.elasticsearch.Version;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
 import org.elasticsearch.common.inject.Injector;
 import org.elasticsearch.common.inject.ModulesBuilder;
-import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.settings.SettingsModule;
 import org.elasticsearch.env.Environment;
@@ -20,7 +22,6 @@ import org.elasticsearch.index.analysis.AnalysisModule;
 import org.elasticsearch.index.analysis.AnalysisService;
 import org.elasticsearch.index.analysis.NamedAnalyzer;
 import org.elasticsearch.index.settings.IndexSettingsModule;
-import org.elasticsearch.indices.analysis.IndicesAnalysisModule;
 import org.elasticsearch.indices.analysis.IndicesAnalysisService;
 
 import org.junit.BeforeClass;
@@ -98,20 +99,25 @@ public class GermanBaseformTokenFilterTests {
     }
 
     private static AnalysisService createAnalysisService() {
-        Settings settings = ImmutableSettings.settingsBuilder()
-                .loadFromClasspath("org/xbib/elasticsearch/index/analysis/baseform_de.json")
-                .put(IndexMetaData.SETTING_VERSION_CREATED, Version.CURRENT)
+
+        Settings settings =
+            Settings
+                .settingsBuilder()
+                .loadFromStream("baseform_de.json", EnglishBaseformTokenFilterTests.class.getResourceAsStream("baseform_de.json"))
+                .put(IndexMetaData.SETTING_VERSION_CREATED, org.elasticsearch.Version.CURRENT)
+                .put("path.home", (new File("").getAbsolutePath()))
                 .build();
+
 
         Index index = new Index("test");
 
         Injector parentInjector = new ModulesBuilder().add(new SettingsModule(settings),
-                new EnvironmentModule(new Environment(settings)),
-                new IndicesAnalysisModule())
+                new EnvironmentModule(new Environment(settings))
+                )
                 .createInjector();
 
         AnalysisModule analysisModule = new AnalysisModule(settings, parentInjector.getInstance(IndicesAnalysisService.class));
-        new AnalysisBaseformPlugin(ImmutableSettings.EMPTY).onModule(analysisModule);
+        new AnalysisBaseformPlugin(Settings.EMPTY).onModule(analysisModule);
 
         Injector injector = new ModulesBuilder().add(
                 new IndexSettingsModule(index, settings),
